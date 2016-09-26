@@ -7,19 +7,19 @@ do
     while IFS= read -r line;
         do
             filename=$(basename "$line")
-            if [ ! -f "$line"/hash-"$filename".md5 ];
+            if [ -f "$backupdir/hash-$filename.md5" ]
                 then
-                    md5sum "$line" | cut -d ' ' -f 1 > "$backupdir/hash-$filename.md5";
-            else
-                :
+                    :
+                else
+                    md5sum "$line" | cut -d ' ' -f 1 > "$backupdir/hash-$filename.md5"
             fi
             md5orig="`md5sum "$line" | cut -d ' ' -f 1`"
-            md5hash="`cat "$backupdir"/hash-"$filename".md5`"
+            md5hash="`cat "$backupdir/hash-$filename.md5"`"
             currentdate="`date +%m-%d-%Y`"
             currenttime="`date +%H-%M`"
             if [ $md5orig != $md5hash ]
                 then
-                    if [ -d "$backupdir/$currentdate" ]
+                    if [ -d $backupdir/$currentdate ]
                         then
                             cp "$line" "$backupdir/$currentdate/$currenttime-backup-$filename" &&
                             md5sum "$line" | cut -d ' ' -f 1 > "$backupdir/hash-$filename.md5"
@@ -35,4 +35,5 @@ do
                     continue
             fi
         done < ~/.backupscript/filelist
+    sleep 10
 done
