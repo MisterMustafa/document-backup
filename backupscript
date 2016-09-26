@@ -1,0 +1,38 @@
+#! /bin/bash
+
+mapfile -t filelist < ~/.backupscript/filelist
+backupdir="`cat ~/.backupscript/backupdir`"
+while :
+do
+    while IFS= read -r line;
+        do
+            filename=$(basename "$line")
+            if [ ! -f "$line"/hash-"$filename".md5 ];
+                then
+                    md5sum "$line" | cut -d ' ' -f 1 > "$backupdir/hash-$filename.md5";
+            else
+                :
+            fi
+            md5orig="`md5sum "$line" | cut -d ' ' -f 1`"
+            md5hash="`cat "$backupdir"/hash-"$filename".md5`"
+            currentdate="`date +%m-%d-%Y`"
+            currenttime="`date +%H-%M`"
+            if [ $md5orig != $md5hash ]
+                then
+                    if [ -d "$backupdir/$currentdate" ]
+                        then
+                            cp "$line" "$backupdir/$currentdate/$currenttime-backup-$filename" &&
+                            md5sum "$line" | cut -d ' ' -f 1 > "$backupdir/hash-$filename.md5"
+                            echo "[$currenttime] Updated $i" >> ~/.backupscript/logs/$currentdate.log
+                            echo "[$currenttime] $line hash: $md5orig" >> ~/.backupscript/logs/$currentdate.log
+                        else
+                            mkdir "$backupdir"/$currentdate &&
+                            cp "$line" "$backupdir/$currentdate/$currenttime-backup-$filename" &&
+                            md5sum "$line" | cut -d ' ' -f 1 > "$backupdir/hash-$filename.md5"
+                            echo "Updated $line at $currenttime. Hash: $md5orig" >> ~/.backupscript/logs/$currentdate.log
+                    fi
+                else
+                    continue
+            fi
+        done < ~/.backupscript/filelist
+done

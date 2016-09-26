@@ -1,0 +1,238 @@
+#! /bin/bash
+
+# Mister Mustafa's Amazing Document Backup Script!
+# GPL V3
+
+firstrun(){ # What to do if the script is being run for the first time.
+	unset filearray
+	echo
+	echo "This appears to be the first time you've run the script, so let's set it up!"
+	read
+	echo
+	echo "Creating data files."
+	echo
+	if mkdir ~/.backupscript;
+		then
+            sleep 0.1
+			printf "."
+		else
+            echo
+			echo "Uh oh! Failed to create data directory in ~/!"
+			exit 1
+	fi
+	if touch ~/.backupscript/list;
+		then
+            sleep 0.1
+			printf "."
+		else
+            echo
+			echo "Uh oh! Failed to create list file in ~/.backupscript/!"
+			exit 1
+	fi
+	if touch ~/.backupscript/backupdir;
+		then
+            sleep 0.1
+			printf "."
+		else
+            echo
+			echo "Uh oh! Fail to create the backup directory file! in ~/.backupscript!"
+			exit 1
+	fi
+	if mkdir ~/.backupscript/logs;
+		then
+            sleep 0.1
+			printf "."
+		else
+            echo
+			echo "Uh oh! Failed to create log directory in ~/.backupscript/!"
+			exit 1
+	fi
+	echo "Done!"
+	sleep 1
+	echo
+	echo "Now we need to collect some information."
+	echo
+	echo "Please choose where the backups will be kept."
+	echo
+	while :
+		do
+			printf "dir> "
+			read -r input
+			backupdir=$(eval echo "'$input'")
+			if [ ! -d "$backupdir" ];
+				then
+					echo "That isn't a directory!"
+				else
+					break
+			fi
+		done
+    echo
+	echo "Brilliant! Now let's choose the files to watch!"
+	echo
+    echo "Please enter the name of the file, including the extension (eg; ~/Dropbox/Story.docx or ~/Documents/Story.odt)"
+    echo
+    while :
+        do
+            printf "file> "
+            read -r input
+            file=$(eval echo "'$input'")
+            if [ -f "$file" ]
+                then
+                    filarray=("${filarray[@]}" "$file")
+            else
+                    echo
+                    echo "There doesn't seem to be anything there."
+            fi
+            echo
+            echo "Add another?"
+            echo
+            read -r -p "y/n> " response
+            case $response in
+                [yY][eE][sS]|[yY]*) 
+                    continue
+                    ;;
+                *)
+                    echo "Continuing."
+                    break
+                    ;;
+            esac
+        done
+	echo "Creating data files."
+	echo
+	if echo "$backupdir" >> ~/.backupscript/backupdir;
+		then
+            sleep 0.1
+			printf "."
+		else
+            echo
+			echo "Failed to save data!"
+			exit 1
+	fi
+	for i in "${filarray[@]}"
+		do
+			if echo "$i" >> ~/.backupscript/filelist;
+				then
+                    sleep 0.1
+					printf "."
+				else
+                    echo
+					echo "Failed to save data!"
+					exit 1
+			fi
+		done
+    echo "Done!"
+	sleep 1
+	echo
+	echo "You can edit ~/.backupscript/filelist manually at any time to add or remove files."
+	echo
+	echo "Alternately, you can re-run the backupscript-setup to add files."
+	echo
+	echo "We're all set! Now we can start the script!"
+    echo
+	echo "Launching script."
+	echo
+	if [ -f "/usr/lib/systemd/system/backupscript@.service" ]
+        then
+            sudo systemctl enable backupscript@$USER.service
+            sudo systemctl start backupscript@$USER.service
+            echo
+            echo "If no errors are reported, the script should now be running!"
+        else
+            sudo /usr/bin/backupscript
+            echo
+            echo "If no errors are reported, the script should now be running!"   
+    fi
+}
+
+addfile(){ # Add a file when the data directory exists
+	unset filearray
+	unset input
+	echo
+echo "Please enter the name of the file, including the extension (eg; ~/Dropbox/Story.docx or ~/Documents/Story.odt)"
+    echo
+    while :
+        do
+            printf "file> "
+            read -r input
+            if [ -z "$input" ];
+                then
+                    echo
+                    echo "Nothing entered. Exiting."
+                    exit 0
+                else
+                    :
+            fi
+            file="${input/#\~/$HOME}"
+            echo $file
+            if [ -f "$file" ]
+                then
+                    filarray=("${filarray[@]}" "$file")
+            else
+                    echo
+                    echo "There doesn't seem to be anything there."
+            fi
+            echo
+            echo "Add another?"
+            echo
+            read -r -p "y/n> " response
+            case $response in
+                [yY][eE][sS]|[yY]*) 
+                    continue
+                    ;;
+                *)
+                    echo "Continuing."
+                    break
+                    ;;
+            esac
+        done
+	echo "Creating data files."
+	echo
+	for i in "${filarray[@]}"
+		do
+			if echo "$i" >> ~/.backupscript/filelist;
+				then
+					printf "."
+				else
+                    echo
+					echo "Failed to save data!"
+					exit 1
+			fi
+		done
+    echo
+    echo "Restarting the script."
+    if [ -f "/usr/lib/systemd/system/backupscript@.service" ]
+        then
+            username=$USER
+            sudo systemctl restart backupscript@$username.service
+        else
+            killall backupscript
+            backupscript
+    fi
+    echo "Done!"
+	sleep 1
+	echo
+	echo "You can edit ~/.backupscript/filelist manually at any time to add or remove files."    
+}
+
+# And now, the process itself.
+
+if [ ! -d ~/.backupscript ]
+	then
+		firstrun;
+		exec /usr/bin/backupscript &
+		exit 0
+	else
+        echo
+		echo "The data directory already exists. Do you want to add files to the watch list?"
+		echo
+		read -r -p "y/n> " response
+        case $response in
+            [yY][eE][sS]|[yY]*) 
+                addfile;
+                ;;
+            *)
+                echo "Exiting."
+                exit 0
+                ;;
+        esac
+fi
